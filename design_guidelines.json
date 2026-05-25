@@ -1,0 +1,104 @@
+{
+  "theme": "LIGHT (with dark mode support)",
+  "archetype": "4 (Swiss & High-Contrast) - Corporate/Institutional Variant",
+  "domain": "B2B SaaS, Corporate Training, Health & Safety (SST)",
+  "typography": {
+    "headings": {
+      "family": "Oswald, sans-serif",
+      "strategy": "Tracking-tight for main headings. Uppercase with tracking-[0.2em] for overlines and micro-labels to convey an industrial, architectural precision."
+    },
+    "body": {
+      "family": "Roboto, sans-serif",
+      "strategy": "Clean, highly legible for dense information."
+    },
+    "forms_tables": {
+      "family": "Open Sans, sans-serif",
+      "strategy": "Maximum legibility at small sizes (12-14px) for data tables and inputs."
+    }
+  },
+  "colors": {
+    "primary": "#1E4484",
+    "primary_hover": "#173566",
+    "secondary": "#004DA6",
+    "dark_gray": "#3D3D3D",
+    "mid_gray": "#737373",
+    "white": "#FFFFFF",
+    "background": {
+      "light": "#F8FAFC",
+      "dark": "#0A0A0A"
+    },
+    "surface": {
+      "light": "#FFFFFF",
+      "dark": "#171717"
+    },
+    "border": {
+      "light": "#E2E8F0",
+      "dark": "#262626"
+    },
+    "success": "#16A34A",
+    "warning": "#D97706",
+    "error": "#DC2626"
+  },
+  "layout_spacing": {
+    "strategy": "Control Room Grid for dashboards (tight gap-4/6, dense data). Tetris Grid for landing page (gap-8/12, asymmetric, visual impact).",
+    "container_padding": "Containers with borders must use p-6 or p-8 to prevent text collision. Mobile images max-h-[80vh].",
+    "surfaces": "Grid Borders (Technical look). Flat backgrounds, 1px subtle border, no shadow for default state. Slight lift (-translate-y-1) and shadow on hover."
+  },
+  "components": {
+    "forms": "Use Shadcn Form, Input, Select. Solid backgrounds, 1px borders, focus rings using primary blue.",
+    "tables": "Shadcn Table. Use Open Sans. Left-align text, right-align numbers. Strict 1px border-b on rows.",
+    "buttons": "Shadcn Button. Primary buttons must use #1E4484 with white text. Hover state must explicitly define color.",
+    "dialogs": "Shadcn Dialog. Use for modals (e.g., student details, QR generation). Add subtle backdrop blur.",
+    "cards": "Shadcn Card. Use for Dashboard KPIs. Flat, rectangular, minimal border-radius (max 8px).",
+    "charts": "Shadcn Charts (Recharts). Use for Dashboard stats. Colors: Primary blue and secondary blue.",
+    "signature": "HTML Canvas element for touch signature, styled with a distinct bounding box (border-dashed border-2 border-mid_gray)."
+  },
+  "accessibility": {
+    "contrast": "Ensure APCA/WCAG AA compliance. Dark text on light backgrounds. White text on primary buttons.",
+    "testing": "All interactive elements (buttons, links, inputs, tabs) MUST include a 'data-testid' attribute (e.g., data-testid='login-submit-button')."
+  },
+  "image_urls": [
+    {
+      "category": "logo",
+      "url": "https://customer-assets.emergentagent.com/job_certifica-alturas/artifacts/lj7w6c1o_logo.png",
+      "description": "MG Master Group Official Logo"
+    },
+    {
+      "category": "hero",
+      "url": "https://static.prod-images.emergentagent.com/jobs/e8df2da8-8295-40d4-8cca-c6c767b32e0b/images/506f46cd1b31033e505d702623d914fa6760ae0b43e9c6299aa2e627796c6580.png",
+      "description": "Cinematic heavy-duty industrial carabiner attached to a bright safety harness rope. Symbol of safety, compliance, and trust."
+    },
+    {
+      "category": "auth_background",
+      "url": "https://static.prod-images.emergentagent.com/jobs/e8df2da8-8295-40d4-8cca-c6c767b32e0b/images/7cec7ade92e1ce4b5a52847a5069f238a8d771f3c653b21064b6e96a75cd3b28.png",
+      "description": "Abstract, minimal corporate background with subtle technical grid lines."
+    },
+    {
+      "category": "feature_safety_training",
+      "url": "https://images.pexels.com/photos/12965141/pexels-photo-12965141.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Group of workers in protective gear engaged in factory training."
+    },
+    {
+      "category": "feature_work_at_heights",
+      "url": "https://images.unsplash.com/photo-1593313637552-29c2c0dacd35?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXIlMjBoYXJuZXNzfGVufDB8fHx8MTc3OTcyMzE2MXww&ixlib=rb-4.1.0&q=85",
+      "description": "Man standing on orange metal bar wearing safety harness during daytime."
+    },
+    {
+      "category": "feature_industrial",
+      "url": "https://images.pexels.com/photos/33914927/pexels-photo-33914927.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Construction worker balancing on scaffolding with helmet and vest in urban setting."
+    }
+  ],
+  "motion_and_interactions": "Micro-interactions for feedback. Hover states (-translate-y-1, shadow-lg) on cards. Smooth transitions (transition-all duration-200) for all buttons and links.",
+  "icons_and_assets": "lucide-react for standard icons, highly legible and consistent stroke widths.",
+  "instructions_to_main_agent": [
+    "Strictly apply the exact colors provided: Primary #1E4484, Secondary #004DA6, Dark Gray #3D3D3D, Mid Gray #737373, White #FFFFFF.",
+    "Implement Oswald for headings (H1-H4), Roboto for paragraphs, Open Sans specifically for form inputs and table data.",
+    "Do not use border-radius larger than 8px (rounded-md/lg). The UI must feel sharp, structured, and compliant.",
+    "Dashboards must use the 'Control Room' grid layout: tight gaps, dense data, strict hierarchy.",
+    "Ensure 'data-testid' is present on EVERY interactive element and form input for testability.",
+    "The login/auth screen should use 'auth_background' for a premium SaaS feel.",
+    "Use standard HTML/Tailwind for the landing page layout, and Shadcn UI heavily for the Admin dashboards.",
+    "Support both light and dark mode, but the primary visual language must optimize for Light mode legibility (B2B SaaS standard)."
+  ]
+}
