@@ -42,7 +42,7 @@ async def seed_admin():
 
 
 def write_test_credentials():
-    mem = Path("/app/memory")
+    mem = Path("/tmp/memory")
     mem.mkdir(parents=True, exist_ok=True)
     creds = mem / "test_credentials.md"
     content = f"""# Test Credentials — MG Master Group
