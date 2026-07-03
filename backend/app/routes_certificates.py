@@ -43,9 +43,9 @@ def _qr_png_bytes(text: str) -> bytes:
     img.save(buf, format="PNG")
     return buf.getvalue()
     def _decode_dataurl(data_url: str) -> bytes:
-    if "," in data_url:
-        data_url = data_url.split(",", 1)[1]
-    return base64.b64decode(data_url)
+       if "," in data_url:
+           data_url = data_url.split(",", 1)[1]
+       return base64.b64decode(data_url)
 
 
 def _build_pdf(cert: dict, learner: dict, group: dict, company: dict | None, trainer: dict | None) -> bytes:
