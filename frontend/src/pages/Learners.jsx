@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Plus, Users, Trash2, Search, Eye, FileCheck2 } from "lucide-react";
+import { Plus, Users, Trash2, Search, Eye, Pencil, FileCheck2 } from "lucide-react";
 import { toast } from "sonner";
 import api, { formatApiError } from "../lib/api";
 
@@ -15,7 +15,7 @@ const EMPTY = {
   blood_group: "O", rh: "+", birth_date: "", phone: "",
   allergies: "", medications: "", injuries: "", illnesses: "",
   emergency_contact_name: "", emergency_contact_phone: "",
-  gender: "M", country: "Colombia", economic_sector: "", current_position: "",
+  gender: "M", country: "Colombia", economic_sector: "",
   company_id: "",
 };
 
@@ -38,6 +38,8 @@ export default function Learners() {
   const [docs, setDocs] = useState(EMPTY_DOCS);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [companyName, setCompanyName] = useState("");
 
   const load = async () => {
     const { data } = await api.get("/learners", { params: q ? { q } : {} });
@@ -54,6 +56,50 @@ export default function Learners() {
     }
   }, [user]);
 
+  const openCreate = () => {
+    setEditingId(null);
+    setCompanyName("");
+    setForm({ ...EMPTY, company_id: user.role === "super_admin" ? "" : user.company_id || "" });
+    setDocs(EMPTY_DOCS);
+    setOpen(true);
+  };
+
+  const fillFormFromLearner = (l) => ({
+    first_name: l.first_name || "", last_name: l.last_name || "",
+    document_type: l.document_type || "CC", document_number: l.document_number || "",
+    labor: l.labor || "", literacy_level: l.literacy_level || "",
+    education_level: l.education_level || "", blood_group: l.blood_group || "O",
+    rh: l.rh || "+", birth_date: l.birth_date || "", phone: l.phone || "",
+    allergies: l.allergies || "", medications: l.medications || "",
+    injuries: l.injuries || "", illnesses: l.illnesses || "",
+    emergency_contact_name: l.emergency_contact_name || "",
+    emergency_contact_phone: l.emergency_contact_phone || "",
+    gender: l.gender || "M", country: l.country || "Colombia",
+    economic_sector: l.economic_sector || "", company_id: l.company_id || "",
+  });
+
+  const openEdit = (l) => {
+    setEditingId(l.id);
+    setCompanyName(l.company_name || "");
+    setForm(fillFormFromLearner(l));
+    setDocs(EMPTY_DOCS);
+    setOpen(true);
+  };
+
+  const checkExistingDocument = async () => {
+    if (editingId || !form.document_number) return;
+    try {
+      const { data } = await api.get("/learners", { params: { q: form.document_number } });
+      const match = data.find((l) => l.document_number === form.document_number);
+      if (match) {
+        setEditingId(match.id);
+        setCompanyName(match.company_name || "");
+        setForm(fillFormFromLearner(match));
+        toast.info("Esta cédula ya está registrada — se cargó la información existente para editarla.");
+      }
+    } catch { /* silencioso */ }
+  };
+
   const onDocFile = (code, e) => {
     const f = e.target.files?.[0];
     if (!f) { setDocs((d) => ({ ...d, [code]: null })); return; }
@@ -67,29 +113,35 @@ export default function Learners() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data: created } = await api.post("/learners", form);
-      const learnerId = created.id;
+      let learnerId;
+      if (editingId) {
+        await api.patch(`/learners/${editingId}`, {
+          first_name: form.first_name, last_name: form.last_name, labor: form.labor,
+          literacy_level: form.literacy_level, education_level: form.education_level,
+          blood_group: form.blood_group, rh: form.rh, birth_date: form.birth_date,
+          phone: form.phone, allergies: form.allergies, medications: form.medications,
+          injuries: form.injuries, illnesses: form.illnesses,
+          emergency_contact_name: form.emergency_contact_name,
+          emergency_contact_phone: form.emergency_contact_phone,
+          gender: form.gender, country: form.country, economic_sector: form.economic_sector,
+        });
+        learnerId = editingId;
+      } else {
+        const { data: created } = await api.post("/learners", form);
+        learnerId = created.id;
+      }
 
       const pending = Object.entries(docs).filter(([, v]) => v);
       for (const [code, f] of pending) {
         try {
-          await api.post("/documents", {
-            learner_id: learnerId, doc_type: code,
-            file_name: f.name, file_data: f.data,
-          });
+          await api.post("/documents", { learner_id: learnerId, doc_type: code, file_name: f.name, file_data: f.data });
         } catch (err) {
           toast.error(`No se pudo subir ${DOC_TYPES.find((t) => t.code === code)?.label}: ${formatApiError(err)}`);
         }
       }
 
-      toast.success(
-        pending.length
-          ? `Aprendiz creado con ${pending.length} documento(s) · login con cédula como usuario y contraseña`
-          : "Aprendiz creado · login con cédula como usuario y contraseña"
-      );
-      setOpen(false);
-      setForm({ ...EMPTY, company_id: user.company_id || "" });
-      setDocs(EMPTY_DOCS);
+      toast.success(editingId ? "Aprendiz actualizado" : "Aprendiz creado · login con cédula como usuario y contraseña");
+      setOpen(false); setEditingId(null); setForm(EMPTY); setDocs(EMPTY_DOCS);
       load();
     } catch (e) { toast.error(formatApiError(e)); }
     finally { setLoading(false); }
@@ -114,7 +166,7 @@ export default function Learners() {
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por cédula o nombre"
                    className="pl-9 w-72" data-testid="learner-search-input" />
           </div>
-          <Button onClick={() => setOpen(true)} className="bg-[#1E4484] hover:bg-[#173566] text-white"
+          <Button onClick={openCreate} className="bg-[#1E4484] hover:bg-[#173566] text-white"
                   data-testid="learner-create-btn">
             <Plus className="w-4 h-4 mr-1" /> Nuevo aprendiz
           </Button>
@@ -153,9 +205,14 @@ export default function Learners() {
                       <Eye className="w-4 h-4" />
                     </Button>
                     {(user.role === "super_admin" || user.role === "empresa") && (
-                      <Button variant="ghost" size="sm" onClick={() => remove(l.id)}>
-                        <Trash2 className="w-4 h-4 text-[#DC2626]" />
-                      </Button>
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(l)} data-testid={`learner-edit-${l.id}`}>
+                          <Pencil className="w-4 h-4 text-[#1E4484]" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => remove(l.id)}>
+                          <Trash2 className="w-4 h-4 text-[#DC2626]" />
+                        </Button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -167,19 +224,26 @@ export default function Learners() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="font-display text-2xl">Nuevo aprendiz</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-2xl">
+            {editingId ? "Editar aprendiz" : "Nuevo aprendiz"}
+          </DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-4 mt-2">
             <Section title="Identificación">
               <Two>
                 <F label="Nombres"><Input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} data-testid="learner-firstname-input" /></F>
                 <F label="Apellidos"><Input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} data-testid="learner-lastname-input" /></F>
                 <F label="Tipo doc.">
-                  <select className="w-full h-9 rounded-md border border-[#E2E8F0] px-3 font-data text-sm bg-white"
+                  <select disabled={!!editingId} className="w-full h-9 rounded-md border border-[#E2E8F0] px-3 font-data text-sm bg-white disabled:bg-[#F1F5F9]"
                           value={form.document_type} onChange={(e) => setForm({ ...form, document_type: e.target.value })}>
                     {["CC", "TI", "CE", "PEP"].map((v) => <option key={v}>{v}</option>)}
                   </select>
                 </F>
-                <F label="N° documento"><Input required value={form.document_number} onChange={(e) => setForm({ ...form, document_number: e.target.value })} data-testid="learner-docnum-input" /></F>
+                <F label="N° documento">
+                  <Input required disabled={!!editingId} value={form.document_number}
+                         onChange={(e) => setForm({ ...form, document_number: e.target.value })}
+                         onBlur={checkExistingDocument}
+                         data-testid="learner-docnum-input" />
+                </F>
                 <F label="Género">
                   <select className="w-full h-9 rounded-md border border-[#E2E8F0] px-3 font-data text-sm bg-white"
                           value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
@@ -216,20 +280,23 @@ export default function Learners() {
             <Section title="Laboral / Educación">
               <Two>
                 <F label="Labor que desarrolla"><Input value={form.labor} onChange={(e) => setForm({ ...form, labor: e.target.value })} /></F>
-                <F label="Cargo actual"><Input value={form.current_position} onChange={(e) => setForm({ ...form, current_position: e.target.value })} /></F>
                 <F label="Sector económico"><Input value={form.economic_sector} onChange={(e) => setForm({ ...form, economic_sector: e.target.value })} /></F>
                 <F label="Nivel de formación"><Input value={form.education_level} onChange={(e) => setForm({ ...form, education_level: e.target.value })} /></F>
                 <F label="Nivel lectoescritura"><Input value={form.literacy_level} onChange={(e) => setForm({ ...form, literacy_level: e.target.value })} /></F>
-                {user.role === "super_admin" && (
-                  <F label="Empresa">
-                    <select required className="w-full h-9 rounded-md border border-[#E2E8F0] px-3 font-data text-sm bg-white"
-                            value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })}
-                            data-testid="learner-company-select">
-                      <option value="">— Selecciona —</option>
-                      {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </F>
-                )}
+                <F label="Empresa">
+                  {editingId
+                    ? <Input disabled value={companyName} />
+                    : user.role === "super_admin"
+                      ? (
+                        <select required className="w-full h-9 rounded-md border border-[#E2E8F0] px-3 font-data text-sm bg-white"
+                                value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })}
+                                data-testid="learner-company-select">
+                          <option value="">— Selecciona —</option>
+                          {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      )
+                      : <Input disabled value={companies.find((c) => c.id === user.company_id)?.name || ""} />}
+                </F>
               </Two>
             </Section>
 
@@ -257,19 +324,21 @@ export default function Learners() {
                 ))}
               </div>
               <div className="text-xs text-[#737373] mt-2">
-                Opcional al crear — también puedes subirlos después desde la pestaña <strong>Documentos</strong>. Máx. 5MB por archivo.
+                Opcional — también puedes subirlos o revisarlos después desde la pestaña <strong>Documentos</strong>. Máx. 5MB por archivo.
               </div>
             </Section>
 
-            <div className="text-xs text-[#737373] bg-[#F1F5F9] border border-[#E2E8F0] p-3 rounded-md font-data">
-              Al crearse, el aprendiz podrá iniciar sesión con su número de cédula como <strong>usuario</strong> y como <strong>contraseña inicial</strong>.
-            </div>
+            {!editingId && (
+              <div className="text-xs text-[#737373] bg-[#F1F5F9] border border-[#E2E8F0] p-3 rounded-md font-data">
+                Al crearse, el aprendiz podrá iniciar sesión con su número de cédula como <strong>usuario</strong> y como <strong>contraseña inicial</strong>.
+              </div>
+            )}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={loading} className="bg-[#1E4484] hover:bg-[#173566] text-white"
                       data-testid="learner-submit-btn">
-                {loading ? "Guardando…" : "Crear aprendiz"}
+                {loading ? "Guardando…" : editingId ? "Guardar cambios" : "Crear aprendiz"}
               </Button>
             </DialogFooter>
           </form>
