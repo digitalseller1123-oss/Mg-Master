@@ -69,7 +69,6 @@ async def create_learner(payload: LearnerCreate, user: dict = Depends(get_curren
     # Auto-create login user for the learner: cédula / cédula
     if not await db.users.find_one({"document_number": payload.document_number}):
         await db.users.insert_one({
-            "email": None,
             "document_number": payload.document_number,
             "password_hash": hash_password(payload.document_number),
             "name": f"{payload.first_name} {payload.last_name}",
