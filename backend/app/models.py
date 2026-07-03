@@ -160,6 +160,9 @@ class ProgramCourseIn(BaseModel):
 class AssignTrainerIn(BaseModel):
     trainer_id: str
 
+class AddLearnersIn(BaseModel):
+    learner_ids: List[str]
+
 
 # ============== DOCUMENTS ==============
 class DocumentUploadIn(BaseModel):
