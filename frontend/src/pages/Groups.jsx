@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Layers, Users, UserCheck, Award, ClipboardCheck, X } from "lucide-react";
+import { Layers, Users, UserCheck, Award, ClipboardCheck, X, UserPlus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import api, { formatApiError } from "../lib/api";
@@ -24,10 +25,17 @@ export default function Groups() {
   const [trainerId, setTrainerId] = useState("");
   const [issuing, setIssuing] = useState(false);
 
+  const [addingTo, setAddingTo] = useState(null);
+  const [allLearners, setAllLearners] = useState([]);
+  const [addQuery, setAddQuery] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [addLoading, setAddLoading] = useState(false);
+
   const load = async () => {
     const { data } = await api.get("/groups");
     setItems(data);
   };
+
   useEffect(() => {
     load();
     if (user.role === "super_admin") {
@@ -57,7 +65,6 @@ export default function Groups() {
       const { data } = await api.post("/certificates/issue", {
         group_id: detail.id, learner_id: learnerId,
       });
-      // open pdf
       const link = document.createElement("a");
       link.href = `data:application/pdf;base64,${data.pdf_b64}`;
       link.download = `${data.cert_number}.pdf`;
@@ -74,6 +81,51 @@ export default function Groups() {
       openDetail(detail.id); load();
     } catch (e) { toast.error(formatApiError(e)); }
   };
+
+  const openAddLearners = async (groupId) => {
+    setAddingTo(groupId);
+    setSelected(new Set());
+    setAddQuery("");
+    try {
+      const { data } = await api.get("/learners");
+      setAllLearners(data);
+    } catch (e) { toast.error(formatApiError(e)); }
+  };
+
+  const toggleSelected = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const submitAddLearners = async () => {
+    if (selected.size === 0) return;
+    setAddLoading(true);
+    try {
+      const { data } = await api.post(`/groups/${addingTo}/learners`, {
+        learner_ids: Array.from(selected),
+      });
+      toast.success(`${data.count} aprendiz(es) agregado(s) al grupo`);
+      setAddingTo(null);
+      load();
+      if (detail?.id === addingTo) openDetail(addingTo);
+    } catch (e) { toast.error(formatApiError(e)); }
+    finally { setAddLoading(false); }
+  };
+
+  const currentGroupLearnerIds = new Set((detail?.id === addingTo ? detail?.learners : [])?.map((l) => l.id) || []);
+  const availableLearners = allLearners.filter((l) => {
+    if (currentGroupLearnerIds.has(l.id)) return false;
+    if (!addQuery) return true;
+    const s = addQuery.toLowerCase();
+    return (
+      l.first_name?.toLowerCase().includes(s) ||
+      l.last_name?.toLowerCase().includes(s) ||
+      l.document_number?.toLowerCase().includes(s)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -102,10 +154,15 @@ export default function Groups() {
                 <div className="text-xs text-[#737373]">
                   {g.course_hours} horas · {g.course_days} día(s)
                 </div>
-                <div className="flex gap-2 pt-2 border-t border-[#E2E8F0]">
+                <div className="flex gap-2 pt-2 border-t border-[#E2E8F0] flex-wrap">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => openDetail(g.id)} data-testid={`group-open-${g.id}`}>
                     Ver detalle
                   </Button>
+                  {(user.role === "super_admin" || user.role === "empresa") && (
+                    <Button variant="outline" size="sm" onClick={() => openAddLearners(g.id)} data-testid={`group-add-learners-${g.id}`}>
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
+                  )}
                   {user.role === "super_admin" && (
                     <Button size="sm" className="bg-[#1E4484] hover:bg-[#173566] text-white"
                             onClick={() => { setAssigning(g.id); setTrainerId(g.trainer_id || ""); }}
@@ -134,9 +191,21 @@ export default function Groups() {
                 <Field label="Duración" value={`${detail.course_hours}h / ${detail.course_days}d`} />
                 <Field label="Entrenador" value={detail.trainer?.name || "Sin asignar"} />
               </div>
+
               <div className="mt-6">
-                <div className="text-overline text-[#1E4484] mb-2">Aprendices ({detail.learners?.length || 0})</div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-overline text-[#1E4484]">Aprendices ({detail.learners?.length || 0} / 30)</div>
+                  {(user.role === "super_admin" || user.role === "empresa") && (
+                    <Button size="sm" variant="outline" onClick={() => openAddLearners(detail.id)}
+                            data-testid="group-detail-add-learners">
+                      <UserPlus className="w-4 h-4 mr-1" /> Agregar aprendices
+                    </Button>
+                  )}
+                </div>
                 <div className="border border-[#E2E8F0] rounded-md divide-y divide-[#E2E8F0]">
+                  {(detail.learners || []).length === 0 && (
+                    <div className="px-4 py-6 text-center text-sm text-[#737373]">Sin aprendices en este grupo aún.</div>
+                  )}
                   {(detail.learners || []).map((l) => (
                     <div key={l.id} className="px-4 py-3 flex items-center justify-between text-sm font-data">
                       <div>
@@ -184,6 +253,39 @@ export default function Groups() {
             <Button variant="outline" onClick={() => setAssigning(null)}>Cancelar</Button>
             <Button onClick={assignTrainer} className="bg-[#1E4484] hover:bg-[#173566] text-white" data-testid="assign-trainer-submit">
               Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!addingTo} onOpenChange={(v) => !v && setAddingTo(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="font-display text-xl">Agregar aprendices al grupo</DialogTitle></DialogHeader>
+          <div className="relative mt-2">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]" />
+            <Input value={addQuery} onChange={(e) => setAddQuery(e.target.value)}
+                   placeholder="Buscar por nombre o cédula" className="pl-9" />
+          </div>
+          <div className="border border-[#E2E8F0] rounded-md divide-y divide-[#E2E8F0] mt-3 max-h-80 overflow-y-auto">
+            {availableLearners.length === 0 && (
+              <div className="px-4 py-6 text-center text-sm text-[#737373]">No hay aprendices disponibles para agregar.</div>
+            )}
+            {availableLearners.map((l) => (
+              <label key={l.id} className="px-4 py-2.5 flex items-center gap-3 text-sm font-data cursor-pointer hover:bg-[#F8FAFC]">
+                <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelected(l.id)}
+                       className="w-4 h-4" data-testid={`add-learner-check-${l.id}`} />
+                <div className="flex-1">
+                  <div className="text-[#3D3D3D] font-medium">{l.first_name} {l.last_name}</div>
+                  <div className="text-xs text-[#737373]">{l.document_type} {l.document_number} · {l.company_name || "—"}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setAddingTo(null)}>Cancelar</Button>
+            <Button onClick={submitAddLearners} disabled={addLoading || selected.size === 0}
+                    className="bg-[#1E4484] hover:bg-[#173566] text-white" data-testid="add-learners-submit">
+              {addLoading ? "Agregando…" : `Agregar (${selected.size})`}
             </Button>
           </DialogFooter>
         </DialogContent>
