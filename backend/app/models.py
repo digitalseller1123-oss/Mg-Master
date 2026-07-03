@@ -123,27 +123,30 @@ class LearnerCreate(BaseModel):
     gender: Optional[str] = ""
     country: Optional[str] = "Colombia"
     economic_sector: Optional[str] = ""
-    current_position: Optional[str] = ""
     company_id: Optional[str] = None  # required for super_admin, auto for empresa
     can_sign: Optional[bool] = True
 
 
 class LearnerUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    labor: Optional[str] = None
-    phone: Optional[str] = None
-    allergies: Optional[str] = None
-    medications: Optional[str] = None
-    injuries: Optional[str] = None
-    illnesses: Optional[str] = None
-    emergency_contact_name: Optional[str] = None
-    emergency_contact_phone: Optional[str] = None
-    education_level: Optional[str] = None
-    blood_group: Optional[str] = None
-    rh: Optional[str] = None
-    birth_date: Optional[str] = None
-    can_sign: Optional[bool] = None
+       first_name: Optional[str] = None
+       last_name: Optional[str] = None
+       labor: Optional[str] = None
+       literacy_level: Optional[str] = None
+       education_level: Optional[str] = None
+       blood_group: Optional[str] = None
+       rh: Optional[str] = None
+       birth_date: Optional[str] = None
+       phone: Optional[str] = None
+       allergies: Optional[str] = None
+       medications: Optional[str] = None
+       injuries: Optional[str] = None
+       illnesses: Optional[str] = None
+       emergency_contact_name: Optional[str] = None
+       emergency_contact_phone: Optional[str] = None
+       gender: Optional[str] = None
+       country: Optional[str] = None
+       economic_sector: Optional[str] = None
+       can_sign: Optional[bool] = None
 
 
 # ============== PROGRAMMING / GROUPS ==============
