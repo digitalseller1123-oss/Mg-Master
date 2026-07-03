@@ -42,6 +42,10 @@ def _qr_png_bytes(text: str) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+    def _decode_dataurl(data_url: str) -> bytes:
+    if "," in data_url:
+        data_url = data_url.split(",", 1)[1]
+    return base64.b64decode(data_url)
 
 
 def _build_pdf(cert: dict, learner: dict, group: dict, company: dict | None, trainer: dict | None) -> bytes:
@@ -145,6 +149,13 @@ def _build_pdf(cert: dict, learner: dict, group: dict, company: dict | None, tra
     c.setLineWidth(0.8)
     c.line(80, sy, 260, sy)
     c.line(W - 260, sy, W - 80, sy)
+    if trainer and trainer.get("signature_data"):
+        try:
+            sig_bytes = _decode_dataurl(trainer["signature_data"])
+            c.drawImage(ImageReader(io.BytesIO(sig_bytes)), W - 245, sy + 4,
+                        width=150, height=42, mask='auto', preserveAspectRatio=True, anchor='s')
+        except Exception:
+            pass
     c.setFont("Helvetica-Bold", 9)
     c.drawCentredString(170, sy - 12, "REPRESENTANTE LEGAL")
     c.setFont("Helvetica", 8)
