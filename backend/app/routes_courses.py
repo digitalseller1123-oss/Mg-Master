@@ -6,7 +6,7 @@ from typing import List
 from .auth import get_current_user, require_roles
 from .db import get_db, serialize, oid
 from .models import (
-    ProgramCourseIn, AssignTrainerIn, DocumentUploadIn, DocumentReviewIn,
+    ProgramCourseIn, AssignTrainerIn, AddLearnersIn, DocumentUploadIn, DocumentReviewIn,
     AttendanceIn, COURSE_LEVELS, DOC_LABELS,
 )
 
@@ -143,7 +143,35 @@ async def assign_trainer(group_id: str, payload: AssignTrainerIn,
     await db.groups.update_one({"_id": oid(group_id)}, {"$set": {"trainer_id": payload.trainer_id}})
     return {"ok": True}
 
+@router.post("/groups/{group_id}/learners")
+async def add_learners_to_group(group_id: str, payload: AddLearnersIn,
+                                 user: dict = Depends(get_current_user)):
+    if user["role"] not in ("super_admin", "empresa"):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    db = get_db()
+    g = await db.groups.find_one({"_id": oid(group_id)})
+    if not g:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    current = g.get("learner_ids", [])
+    space = MAX_PER_GROUP - len(current)
+    if space <= 0:
+        raise HTTPException(status_code=400, detail="El grupo ya está lleno (30/30)")
+    added = []
+    for lid in payload.learner_ids[:space]:
+        if lid in current:
+            continue
+        learner = await db.learners.find_one({"_id": oid(lid)})
+        if not learner:
+            continue
+        if user["role"] == "empresa" and learner.get("company_id") != user.get("company_id"):
+            continue
+        await db.groups.update_one({"_id": g["_id"]}, {
+            "$addToSet": {"learner_ids": lid, "company_ids": learner.get("company_id")},
+        })
+        added.append(lid)
+    return {"added": added, "count": len(added)}
 
+</parameter>
 @router.delete("/groups/{group_id}/learners/{learner_id}")
 async def remove_learner_from_group(group_id: str, learner_id: str,
                                     user: dict = Depends(get_current_user)):
