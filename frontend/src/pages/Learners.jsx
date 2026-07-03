@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Plus, Users, Trash2, Search, Eye } from "lucide-react";
+import { Plus, Users, Trash2, Search, Eye, FileCheck2 } from "lucide-react";
 import { toast } from "sonner";
 import api, { formatApiError } from "../lib/api";
 
@@ -19,6 +19,15 @@ const EMPTY = {
   company_id: "",
 };
 
+const DOC_TYPES = [
+  { code: "cedula", label: "Copia de cédula" },
+  { code: "examen_medico", label: "Examen médico para trabajo en alturas" },
+  { code: "seguridad_social", label: "Seguridad social" },
+  { code: "certificado_alturas", label: "Copia de certificado de alturas" },
+];
+
+const EMPTY_DOCS = { cedula: null, examen_medico: null, seguridad_social: null, certificado_alturas: null };
+
 export default function Learners() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
@@ -26,6 +35,7 @@ export default function Learners() {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState(EMPTY);
+  const [docs, setDocs] = useState(EMPTY_DOCS);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +43,9 @@ export default function Learners() {
     const { data } = await api.get("/learners", { params: q ? { q } : {} });
     setItems(data);
   };
+
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [q]);
+
   useEffect(() => {
     if (user.role === "super_admin") {
       api.get("/companies").then(({ data }) => setCompanies(data));
@@ -42,13 +54,42 @@ export default function Learners() {
     }
   }, [user]);
 
+  const onDocFile = (code, e) => {
+    const f = e.target.files?.[0];
+    if (!f) { setDocs((d) => ({ ...d, [code]: null })); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error("Máximo 5MB por archivo"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setDocs((d) => ({ ...d, [code]: { name: f.name, data: reader.result } }));
+    reader.readAsDataURL(f);
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/learners", form);
-      toast.success("Aprendiz creado · login con cédula como usuario y contraseña");
-      setOpen(false); setForm({ ...EMPTY, company_id: user.company_id || "" });
+      const { data: created } = await api.post("/learners", form);
+      const learnerId = created.id;
+
+      const pending = Object.entries(docs).filter(([, v]) => v);
+      for (const [code, f] of pending) {
+        try {
+          await api.post("/documents", {
+            learner_id: learnerId, doc_type: code,
+            file_name: f.name, file_data: f.data,
+          });
+        } catch (err) {
+          toast.error(`No se pudo subir ${DOC_TYPES.find((t) => t.code === code)?.label}: ${formatApiError(err)}`);
+        }
+      }
+
+      toast.success(
+        pending.length
+          ? `Aprendiz creado con ${pending.length} documento(s) · login con cédula como usuario y contraseña`
+          : "Aprendiz creado · login con cédula como usuario y contraseña"
+      );
+      setOpen(false);
+      setForm({ ...EMPTY, company_id: user.company_id || "" });
+      setDocs(EMPTY_DOCS);
       load();
     } catch (e) { toast.error(formatApiError(e)); }
     finally { setLoading(false); }
@@ -150,6 +191,7 @@ export default function Learners() {
                 <F label="Teléfono"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></F>
               </Two>
             </Section>
+
             <Section title="Datos médicos">
               <Two>
                 <F label="Grupo sanguíneo">
@@ -170,6 +212,7 @@ export default function Learners() {
                 <F label="Enfermedades actuales"><Input value={form.illnesses} onChange={(e) => setForm({ ...form, illnesses: e.target.value })} /></F>
               </Two>
             </Section>
+
             <Section title="Laboral / Educación">
               <Two>
                 <F label="Labor que desarrolla"><Input value={form.labor} onChange={(e) => setForm({ ...form, labor: e.target.value })} /></F>
@@ -189,15 +232,39 @@ export default function Learners() {
                 )}
               </Two>
             </Section>
+
             <Section title="Contacto de emergencia">
               <Two>
                 <F label="Nombre"><Input value={form.emergency_contact_name} onChange={(e) => setForm({ ...form, emergency_contact_name: e.target.value })} /></F>
                 <F label="Teléfono"><Input value={form.emergency_contact_phone} onChange={(e) => setForm({ ...form, emergency_contact_phone: e.target.value })} /></F>
               </Two>
             </Section>
+
+            <Section title="Documentos">
+              <div className="grid sm:grid-cols-2 gap-3">
+                {DOC_TYPES.map((t) => (
+                  <div key={t.code}>
+                    <Label className="text-xs flex items-center gap-1">
+                      <FileCheck2 className="w-3.5 h-3.5 text-[#1E4484]" /> {t.label}
+                    </Label>
+                    <Input type="file" accept="application/pdf,image/*"
+                           onChange={(e) => onDocFile(t.code, e)}
+                           data-testid={`learner-doc-${t.code}-input`} />
+                    {docs[t.code] && (
+                      <div className="text-xs text-[#16A34A] mt-1">✓ {docs[t.code].name}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-[#737373] mt-2">
+                Opcional al crear — también puedes subirlos después desde la pestaña <strong>Documentos</strong>. Máx. 5MB por archivo.
+              </div>
+            </Section>
+
             <div className="text-xs text-[#737373] bg-[#F1F5F9] border border-[#E2E8F0] p-3 rounded-md font-data">
               Al crearse, el aprendiz podrá iniciar sesión con su número de cédula como <strong>usuario</strong> y como <strong>contraseña inicial</strong>.
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={loading} className="bg-[#1E4484] hover:bg-[#173566] text-white"
