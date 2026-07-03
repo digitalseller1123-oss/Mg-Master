@@ -73,6 +73,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     active: Optional[bool] = None
     sst_license: Optional[str] = None
+    signature_data: Optional[str] = None
 
 
 # ============== COMPANY ==============
