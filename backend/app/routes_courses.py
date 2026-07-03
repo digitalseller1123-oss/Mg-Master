@@ -171,7 +171,6 @@ async def add_learners_to_group(group_id: str, payload: AddLearnersIn,
         added.append(lid)
     return {"added": added, "count": len(added)}
 
-</parameter>
 @router.delete("/groups/{group_id}/learners/{learner_id}")
 async def remove_learner_from_group(group_id: str, learner_id: str,
                                     user: dict = Depends(get_current_user)):
