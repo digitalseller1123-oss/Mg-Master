@@ -18,6 +18,7 @@ from app.routes_learners import router as learners_router
 from app.routes_courses import router as courses_router
 from app.routes_certificates import router as cert_router, public_router
 from app.routes_stats import router as stats_router
+from app.routes_documents import router as documents_router
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -65,5 +66,6 @@ api.include_router(courses_router)
 api.include_router(cert_router)
 api.include_router(public_router)
 api.include_router(stats_router)
+api.include_router(documents_router)
 
 app.include_router(api)
